@@ -6,9 +6,12 @@
         PageHeader = new PageHeader();
         PageFooter = new PageFooter();
     }
+
     public CoverPage CoverPage { get; set; }
     public PageHeader PageHeader { get; set; }
     public PageFooter PageFooter { get; set; }
+
+    public bool RemoveAnnotationsOtherThanLinks { get; set; }
 }
 
 public class CoverPage

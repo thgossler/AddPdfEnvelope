@@ -354,11 +354,13 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                         }
                         pdfCanvas.Release();
 
-                        // Clear existing annotations/comments
-                        var annotations = pdfPage.GetAnnotations();
-                        foreach (var annotation in annotations) {
-                            if (!annotation.GetSubtype().Equals(PdfName.Link)) {
-                                pdfPage.RemoveAnnotation(annotation);
+                        if (settings.RemoveAnnotationsOtherThanLinks) {
+                            // Clear existing annotations/comments
+                            var annotations = pdfPage.GetAnnotations();
+                            foreach (var annotation in annotations) {
+                                if (!annotation.GetSubtype().Equals(PdfName.Link)) {
+                                    pdfPage.RemoveAnnotation(annotation);
+                                }
                             }
                         }
                     }
