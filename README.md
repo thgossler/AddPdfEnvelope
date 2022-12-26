@@ -68,7 +68,8 @@ The content of the added cover page, the header and the footer are configurable 
       "TextRight2": "Page {pageNum} of {numOfPages}",
       "DrawLine": true,
       "ExcludeCoverPage": false
-    }
+    },
+    "RemoveAnnotationsOtherThanLinks": true
   },
   "Logging": {
     "LogLevel": {
@@ -77,6 +78,7 @@ The content of the added cover page, the header and the footer are configurable 
     }
   }
 }
+
 ```
 
 > _**Note:** This tool was written by me in my spare time and will be developed only sporadically._
