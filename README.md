@@ -33,7 +33,7 @@ This is a simple .NET command line (CLI) tool for Windows and Linux to add a cov
 
 [![ReplacePdfHyperlinks screen shot][product-screenshot]]([https://github.com/thgossler/AddPdfEnvelope/])
 
-The content of the added cover page, the header and the footer are configurable via appsettings.json file. Here is an example:
+The content of the added cover page, the header and the footer are configurable via `appsettings.json` file. Here is an example:
 
 ```json
 {
