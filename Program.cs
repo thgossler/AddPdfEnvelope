@@ -116,6 +116,8 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
     const float pageTopMargin = 35;
     const float pageBottomMargin = 25;
 
+    // TODO: Refactor code to reduce nesting (flat usings, extract methods, etc.)
+
     // Add a cover page to the document
     var coverTempFilename = $"{outputFile.Directory.FullName}{System.IO.Path.DirectorySeparatorChar}{outputFile.Name}-cover.pdf";
     using (var reader = new PdfReader(inputFile)) {
