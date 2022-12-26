@@ -2,7 +2,7 @@
   "profiles": {
     "ReplacePdfHyperlinks": {
       "commandName": "Project",
-      "commandLineArgs": "-f ../../../Test.pdf -o ../../../Test-Output.pdf -y"
+      "commandLineArgs": "-f ../../../Test.pdf -o ../../../Test-Result.pdf -y"
     },
     "WSL": {
       "commandName": "WSL2",
