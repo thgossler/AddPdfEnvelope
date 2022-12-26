@@ -33,6 +33,52 @@ This is a simple .NET command line (CLI) tool for Windows and Linux to add a cov
 
 [![ReplacePdfHyperlinks screen shot][product-screenshot]]([https://github.com/thgossler/AddPdfEnvelope/])
 
+The content of the added cover page, the header and the footer are configurable via appsettings.json file. Here is an example:
+
+```json
+{
+  "PdfEnvelope": {
+    "CoverPage": {
+      "Topic": "Product Name",
+      "Subtopic": "Version 2022",
+      "Title": "System Architecture",
+      "Subtitle": "(Architecture Specification)",
+      "Organization": "Department",
+      "Version": "Revision: 0.1 (for review)",
+      "Author": "Author: Surname, Given name",
+      "Date": "Date: {date:dd.MM.yyyy}",
+      "Disclaimer": "This printed copy is not subject to any change control."
+    },
+    "PageHeader": {
+      "TextLeft1": "System Architecture Specification",
+      "TextLeft2": "Version 2022",
+      "TextCenter1": "",
+      "TextCenter2": "",
+      "TextRight1": "",
+      "TextRight2": "Revision: 0.1",
+      "DrawLine": true,
+      "ExcludeCoverPage": true
+    },
+    "PageFooter": {
+      "TextLeft1": "",
+      "TextLeft2": "Department",
+      "TextCenter1": "© My Company {date:yyyy}. All rights reserved.",
+      "TextCenter2": "Restricted (for internal use only)",
+      "TextRight1": "",
+      "TextRight2": "Page {pageNum} of {numOfPages}",
+      "DrawLine": true,
+      "ExcludeCoverPage": false
+    }
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning"
+    }
+  }
+}
+```
+
 > _**Note:** This tool was written by me in my spare time and will be developed only sporadically._
 
 
