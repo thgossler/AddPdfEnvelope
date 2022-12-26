@@ -97,8 +97,6 @@ The result looks like that:
 
 [![AddPdfEnvelope screen shot][result-screenshot]]([https://github.com/thgossler/AddPdfEnvelope/])
 
-> _**Note:** This tool was written by me in my spare time and will be developed only sporadically._
-
 
 ### Built With
 
