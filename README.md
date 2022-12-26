@@ -29,7 +29,19 @@
 
 ## About The Project
 
-This is a simple .NET command line (CLI) tool for Windows and Linux to add a cover page, header and footer to a PDF document. The tool uses the iText7 library for PDF processing which is licensed under AGPL for non-commercial use. Hence, this tool is also published under the AGPL license.
+This is a simple .NET command line (CLI) tool for Windows and Linux which helps adding a cover page, a header and a footer to an existing PDF document. 
+
+The tool uses the iText7 library for PDF processing which is licensed under AGPL for non-commercial use. Hence, this tool is also published under the AGPL license.
+
+The command line interface is very simple as shown in the following picture. Here are also a few example command lines.
+
+```bash
+# Don't forget to make the file executable under Linux, e.g.
+sudo chmod +x ./AddPdfEnvelope-linux-x64
+
+./AddPdfEnvelope-linux-x64 --help
+./AddPdfEnvelope-linux-x64 -f ../../../Test.pdf -o ../../../Test-result.pdf -y
+```
 
 [![ReplacePdfHyperlinks screen shot][product-screenshot]]([https://github.com/thgossler/AddPdfEnvelope/])
 
@@ -96,9 +108,6 @@ The content of the added cover page, the header and the footer are configurable 
 ### Prerequisites
 
 * Latest .NET SDK
-  ```sh
-  winget install -e --id Microsoft.dotnet
-  ```
 
 
 ### Installation as Tool for Use
