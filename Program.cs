@@ -327,7 +327,7 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                                     .SetTextAlignment(TextAlignment.CENTER)
                                     .SetFixedPosition(i, pageSideMargin, pageBottomMargin + textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
                                 canvas.Add(p);
-                                p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextCenter2, pdf, i))
+                                p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextCenter2, pdf, i))
                                     .SetTextAlignment(TextAlignment.CENTER)
                                     .SetFixedPosition(i, pageSideMargin, pageBottomMargin, pageSize.GetWidth() - 2 * pageSideMargin);
                                 canvas.Add(p);
