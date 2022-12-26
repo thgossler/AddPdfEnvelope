@@ -357,7 +357,9 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                         // Clear existing annotations/comments
                         var annotations = pdfPage.GetAnnotations();
                         foreach (var annotation in annotations) {
-                            pdfPage.RemoveAnnotation(annotation);
+                            if (!annotation.GetSubtype().Equals(PdfName.Link)) {
+                                pdfPage.RemoveAnnotation(annotation);
+                            }
                         }
                     }
                     Console.Write($"                                  \r");
