@@ -6,10 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Copyright>Copyright (c) Thomas Gossler</Copyright>
-    <PackageProjectUrl>https://github.com/thgossler/ReplacePdfHyperlinks</PackageProjectUrl>
-    <Description>Command line (CLI) tool to search and replace URLs in a PDF document with regular expressions.</Description>
+    <PackageProjectUrl>https://github.com/thgossler/AddPdfEnvelope</PackageProjectUrl>
+    <Description>A CLI tool for Windows and Linux to add a cover page, header and footer to a PDF document.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <RepositoryUrl>https://github.com/thgossler/ReplacePdfHyperlinks</RepositoryUrl>
+    <RepositoryUrl>https://github.com/thgossler/AddPdfEnvelope</RepositoryUrl>
     <AssemblyVersion>0.3.0</AssemblyVersion>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
