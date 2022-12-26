@@ -68,9 +68,9 @@ command.AddOption(overwriteOption);
 // Command handler
 
 command.SetHandler((inputFile, outputFile, overwrite) => {
-    var useInputFileAsOutputFile = false;
+    int exitCode = 0;
 
-    // TODO: Improve file error handling
+    var useInputFileAsOutputFile = false;
 
     if (outputFile == null) {
         // No output file specified but replace regex specified means input file shall be modified in-place
@@ -81,31 +81,25 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
         }
         else {
             Console.WriteLine($"In order to modify the input file in-place use option {overwriteOption.Name}.");
-            return;
+            exitCode = 1;
+            return Task.FromResult(exitCode);
         }
     }
     else {
         // Avoid overwriting an existing output file without declared intent
         if (File.Exists(outputFile.FullName)) {
             if (!overwrite.HasValue || !overwrite.Value) {
-                var fgcolor = Console.ForegroundColor;
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Output file exists. Use option {overwriteOption.Name}.");
-                Console.ForegroundColor = fgcolor;
-                return;
+                LogError($"Output file exists. Use option {overwriteOption.Name}.");
+                exitCode = 1;
+                return Task.FromResult(exitCode);
             }
             try {
                 File.Delete(outputFile.FullName);
             }
             catch (Exception) {
-                
-                // TODO: Method for writing error output
-
-                var fgcolor = Console.ForegroundColor;
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Output file exists and cannot be overwritten. Ensure it is not opened in another application.");
-                Console.ForegroundColor = fgcolor;
-                return;
+                LogError($"Output file exists and cannot be overwritten. Ensure it is not opened in another application.");
+                exitCode = 1;
+                return Task.FromResult(exitCode);
             }
         }
     }
@@ -116,264 +110,287 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
     const float pageTopMargin = 35;
     const float pageBottomMargin = 25;
 
-    // TODO: Refactor code to reduce nesting (flat usings, extract methods, etc.)
+    try {
+        // Add a cover page to the document
+        var coverTempFilename = $"{outputFile.Directory.FullName}{System.IO.Path.DirectorySeparatorChar}{outputFile.Name}-cover.pdf";
+        using (var reader = new PdfReader(inputFile)) {
+            using var writer = GetPdfWriter(outputFile);
+            if (writer == null) {
+                exitCode = 1;
+                return Task.FromResult(exitCode);
+            }
+            using var inputPdf = new PdfDocument(reader);
+            using var outputPdf = new PdfDocument(writer);
+            // Create temporary cover page document
+            using (var coverWriter = GetPdfWriter(new FileInfo(coverTempFilename))) {
+                if (coverWriter == null) {
+                    exitCode = 1;
+                    return Task.FromResult(exitCode);
+                }
+                using var coverPdf = new PdfDocument(coverWriter);
+                coverPdf.AddNewPage(new PageSize(inputPdf.GetFirstPage().GetPageSize()));
 
-    // Add a cover page to the document
-    var coverTempFilename = $"{outputFile.Directory.FullName}{System.IO.Path.DirectorySeparatorChar}{outputFile.Name}-cover.pdf";
-    using (var reader = new PdfReader(inputFile)) {
-        using (var writer = GetPdfWriter(outputFile)) {
-            if (writer == null) { return; }
-            using (var inputPdf = new PdfDocument(reader)) {
-                using (var outputPdf = new PdfDocument(writer)) {
-                    // Create temporary cover page document
-                    using (var coverWriter = GetPdfWriter(new FileInfo(coverTempFilename))) {
-                        if (coverWriter == null) { return; }
-                        using (var coverPdf = new PdfDocument(coverWriter)) {
-                            coverPdf.AddNewPage(new PageSize(inputPdf.GetFirstPage().GetPageSize()));
+                using var coverDocument = new Document(coverPdf);
+                PdfPage pdfPage = coverPdf.GetPage(1);
+                var pageSize = pdfPage.GetPageSize();
 
-                            using (var coverDocument = new Document(coverPdf)) {
-                                PdfPage pdfPage = coverPdf.GetPage(1);
-                                var pageSize = pdfPage.GetPageSize();
+                PdfCanvas pdfCanvas = new PdfCanvas(pdfPage.NewContentStreamBefore(), pdfPage.GetResources(), coverPdf);
 
-                                PdfCanvas pdfCanvas = new PdfCanvas(pdfPage.NewContentStreamBefore(), pdfPage.GetResources(), coverPdf);
+                using (Canvas canvas = new Canvas(pdfCanvas, pdfPage.GetCropBox())) {
+                    const float textSideMargin = 20;
 
-                                using (Canvas canvas = new Canvas(pdfCanvas, pdfPage.GetCropBox())) {
-                                    const float textSideMargin = 20;
+                    canvas.SetFont(PdfFontFactory.CreateFont(StandardFonts.TIMES_ROMAN));
 
-                                    canvas.SetFont(PdfFontFactory.CreateFont(StandardFonts.TIMES_ROMAN));
+                    // Topic
+                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Topic, coverPdf, 1))
+                        .SetTextAlignment(TextAlignment.LEFT)
+                        .SetFontSize(22)
+                        .SetBold()
+                        .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 120, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
+                    // Subtopic
+                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Subtopic, coverPdf, 1))
+                        .SetTextAlignment(TextAlignment.LEFT)
+                        .SetFontSize(22)
+                        .SetBold()
+                        .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 150, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
+                    // Disclaimer
+                    if (!string.IsNullOrWhiteSpace(settings.CoverPage.Disclaimer)) {
+                        var disclaimerWidth = 180;
+                        var disclaimerHeight = 40;
+                        var disclaimerX = pageSize.GetWidth() - pageSideMargin - disclaimerWidth;
+                        var disclaimerY = pageSize.GetHeight() - pageTopMargin - 50;
+                        var disclaimerMargin = 5;
+                        canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
+                            .SetLineWidth(1.0f)
+                            .Rectangle(disclaimerX, disclaimerY, disclaimerWidth, -disclaimerHeight)
+                            .Stroke();
+                        canvas.Add(new Paragraph(settings.CoverPage.Disclaimer)
+                            .SetTextAlignment(TextAlignment.LEFT)
+                            .SetVerticalAlignment(VerticalAlignment.BOTTOM)
+                            .SetFontSize(10)
+                            .SetFixedPosition(1, disclaimerX + disclaimerMargin, disclaimerY - disclaimerHeight + disclaimerMargin, disclaimerWidth - 2 * disclaimerMargin));
+                    }
+                    // Title
+                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Title, coverPdf, 1))
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetFontSize(24)
+                        .SetBold()
+                        .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 250, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
+                    // Subtitle
+                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Subtitle, coverPdf, 1))
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetFontSize(18)
+                        .SetBold()
+                        .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 280, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
+                    // Version
+                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Version, coverPdf, 1))
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetFontSize(16)
+                        .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 370, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
+                    // Author
+                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Author, coverPdf, 1))
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetFontSize(16)
+                        .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 400, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
+                    // Date
+                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Date, coverPdf, 1))
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetFontSize(16)
+                        .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 430, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
+                    // Frames
+                    var orgTextWidth = !string.IsNullOrEmpty(settings.CoverPage.Organization) ? settings.CoverPage.Organization.Length * 8 : 0;
+                    var framesTopY = pageSize.GetHeight() - pageTopMargin - 170;
+                    canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
+                        .SetLineWidth(1.0f)
+                        .SetFillColor(ColorConstants.BLACK)
+                        .Rectangle(pageSideMargin + textSideMargin, framesTopY, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin - orgTextWidth, -15)
+                        .FillStroke()
+                        .Stroke();
+                    canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
+                        .SetLineWidth(1.0f)
+                        .Rectangle(pageSideMargin + textSideMargin, framesTopY - 20, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin, -(framesTopY - 20 - pageBottomMargin - 100))
+                        .Stroke();
+                    if (!string.IsNullOrEmpty(settings.CoverPage.Organization)) {
+                        // Organization
+                        canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Organization, coverPdf, 1))
+                            .SetTextAlignment(TextAlignment.RIGHT)
+                            .SetFontSize(14)
+                            .SetBold()
+                            .SetFixedPosition(1, pageSize.GetWidth() - pageSideMargin - textSideMargin - orgTextWidth, framesTopY - 19, orgTextWidth));
+                    }
+                }
+                coverPdf.SetFlushUnusedObjects(true);
+                coverWriter.SetCompressionLevel(9);
+            }
 
-                                    // Topic
-                                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Topic, coverPdf, 1))
-                                        .SetTextAlignment(TextAlignment.LEFT)
-                                        .SetFontSize(22)
-                                        .SetBold()
-                                        .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 120, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
-                                    // Subtopic
-                                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Subtopic, coverPdf, 1))
-                                        .SetTextAlignment(TextAlignment.LEFT)
-                                        .SetFontSize(22)
-                                        .SetBold()
-                                        .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 150, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
-                                    // Disclaimer
-                                    if (!string.IsNullOrWhiteSpace(settings.CoverPage.Disclaimer)) {
-                                        var disclaimerWidth = 180;
-                                        var disclaimerHeight = 40;
-                                        var disclaimerX = pageSize.GetWidth() - pageSideMargin - disclaimerWidth;
-                                        var disclaimerY = pageSize.GetHeight() - pageTopMargin - 50;
-                                        var disclaimerMargin = 5;
-                                        canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
-                                            .SetLineWidth(1.0f)
-                                            .Rectangle(disclaimerX, disclaimerY, disclaimerWidth, -disclaimerHeight)
-                                            .Stroke();
-                                        canvas.Add(new Paragraph(settings.CoverPage.Disclaimer)
-                                            .SetTextAlignment(TextAlignment.LEFT)
-                                            .SetVerticalAlignment(VerticalAlignment.BOTTOM)
-                                            .SetFontSize(10)
-                                            .SetFixedPosition(1, disclaimerX + disclaimerMargin, disclaimerY - disclaimerHeight + disclaimerMargin, disclaimerWidth - 2 * disclaimerMargin));
-                                    }
-                                    // Title
-                                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Title, coverPdf, 1))
-                                        .SetTextAlignment(TextAlignment.CENTER)
-                                        .SetFontSize(24)
-                                        .SetBold()
-                                        .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 250, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
-                                    // Subtitle
-                                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Subtitle, coverPdf, 1))
-                                        .SetTextAlignment(TextAlignment.CENTER)
-                                        .SetFontSize(18)
-                                        .SetBold()
-                                        .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 280, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
-                                    // Version
-                                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Version, coverPdf, 1))
-                                        .SetTextAlignment(TextAlignment.CENTER)
-                                        .SetFontSize(16)
-                                        .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 370, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
-                                    // Author
-                                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Author, coverPdf, 1))
-                                        .SetTextAlignment(TextAlignment.CENTER)
-                                        .SetFontSize(16)
-                                        .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 400, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
-                                    // Date
-                                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Date, coverPdf, 1))
-                                        .SetTextAlignment(TextAlignment.CENTER)
-                                        .SetFontSize(16)
-                                        .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 430, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
-                                    // Frames
-                                    var orgTextWidth = !string.IsNullOrEmpty(settings.CoverPage.Organization) ? settings.CoverPage.Organization.Length * 8 : 0;
-                                    var framesTopY = pageSize.GetHeight() - pageTopMargin - 170;
-                                    canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
-                                        .SetLineWidth(1.0f)
-                                        .SetFillColor(ColorConstants.BLACK)
-                                        .Rectangle(pageSideMargin + textSideMargin, framesTopY, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin - orgTextWidth, -15)
-                                        .FillStroke()
-                                        .Stroke();
-                                    canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
-                                        .SetLineWidth(1.0f)
-                                        .Rectangle(pageSideMargin + textSideMargin, framesTopY - 20, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin, -(framesTopY - 20 - pageBottomMargin - 100))
-                                        .Stroke();
-                                    if (!string.IsNullOrEmpty(settings.CoverPage.Organization)) {
-                                        // Organization
-                                        canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Organization, coverPdf, 1))
-                                            .SetTextAlignment(TextAlignment.RIGHT)
-                                            .SetFontSize(14)
-                                            .SetBold()
-                                            .SetFixedPosition(1, pageSize.GetWidth() - pageSideMargin - textSideMargin - orgTextWidth, framesTopY - 19, orgTextWidth));
-                                    }
-                                }
-                                coverPdf.SetFlushUnusedObjects(true);
-                                coverWriter.SetCompressionLevel(9);
-                            }
+            // Add the cover page to document
+            using (var coverPdf = new PdfDocument(new PdfReader(coverTempFilename))) {
+                var merger = new PdfMerger(outputPdf);
+                merger.Merge(coverPdf, 1, 1);
+                merger.Merge(inputPdf, 1, inputPdf.GetNumberOfPages());
+                merger.Close();
+            }
+        }
+        try {
+            // Delete temporary files
+            if (File.Exists(coverTempFilename)) {
+                File.Delete(coverTempFilename);
+            }
+        }
+        catch (Exception) {
+            LogError("Error: Temporary cover page file could not be deleted");
+            Console.WriteLine("Continuing...");
+        }
+    }
+    catch (Exception ex) {
+        LogError($"Error: {ex.Message}");
+        LogError($"Error: Cover page could not be generated");
+        Console.WriteLine("Exiting...");
+        exitCode = 1;
+        return Task.FromResult(exitCode);
+    }
+
+    try {
+        // Add header and footer to all pages except the cover page
+        var tempOutput2Filename = GetTempOutputFilename(outputFile);
+        var output2File = new FileInfo(tempOutput2Filename);
+        using (var reader = new PdfReader(outputFile)) {
+            using var writer = GetPdfWriter(output2File);
+            if (writer == null) {
+                exitCode = 1;
+                return Task.FromResult(exitCode);
+            }
+            using var pdf = new PdfDocument(reader, writer);
+            var numOfPages = pdf.GetNumberOfPages();
+            using var document = new Document(pdf, pdf.GetDefaultPageSize(), false);
+            const float textLineHeight = 15;
+            const float fontSize = 9;
+
+            var StyledParagraph = (string text) => {
+                return new Paragraph(text)
+                    .SetMargin(0)
+                    .SetFont(PdfFontFactory.CreateFont(StandardFonts.TIMES_ROMAN))
+                    .SetFontSize(fontSize)
+                    .SetFontColor(ColorConstants.BLACK);
+            };
+
+            for (int i = 1; i <= numOfPages; i++) {
+                Console.Write($"Processing page {i}...\r");
+
+                PdfPage pdfPage = pdf.GetPage(i);
+                var pageSize = pdfPage.GetPageSize();
+
+                PdfCanvas pdfCanvas = new PdfCanvas(pdfPage.NewContentStreamBefore(), pdfPage.GetResources(), pdf);
+
+                using (Canvas canvas = new Canvas(pdfCanvas, pdfPage.GetCropBox())) {
+                    if (i > 1 || !settings.PageHeader.ExcludeCoverPage) {
+                        // Add page header - Left
+                        Paragraph p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextLeft1, pdf, i))
+                            .SetTextAlignment(TextAlignment.LEFT)
+                            .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin, pageSize.GetWidth() - 2 * pageSideMargin);
+                        canvas.Add(p);
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextLeft2, pdf, i))
+                            .SetTextAlignment(TextAlignment.LEFT)
+                            .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin - textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
+                        canvas.Add(p);
+
+                        // Add page header - Center
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextCenter1, pdf, i))
+                            .SetTextAlignment(TextAlignment.CENTER)
+                            .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin, pageSize.GetWidth() - 2 * pageSideMargin);
+                        canvas.Add(p);
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextCenter2, pdf, i))
+                            .SetTextAlignment(TextAlignment.CENTER)
+                            .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin - textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
+                        canvas.Add(p);
+
+                        // Add page header - Right
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextRight1, pdf, i))
+                            .SetTextAlignment(TextAlignment.RIGHT)
+                            .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin, pageSize.GetWidth() - 2 * pageSideMargin);
+                        canvas.Add(p);
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextRight2, pdf, i))
+                            .SetTextAlignment(TextAlignment.RIGHT)
+                            .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin - textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
+                        canvas.Add(p);
+
+                        // Draw header line
+                        if (settings.PageHeader.DrawLine) {
+                            canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
+                            .SetLineWidth(0.5f)
+                            .MoveTo(pageSideMargin, pageSize.GetHeight() - pageTopMargin - textLineHeight - 3).LineTo(pageSize.GetWidth() - pageSideMargin, pageSize.GetHeight() - pageTopMargin - textLineHeight - 3)
+                            .Stroke();
                         }
                     }
 
-                    // Add the cover page to document
-                    using (var coverPdf = new PdfDocument(new PdfReader(coverTempFilename))) {
-                        var merger = new PdfMerger(outputPdf);
-                        merger.Merge(coverPdf, 1, 1);
-                        merger.Merge(inputPdf, 1, inputPdf.GetNumberOfPages());
-                        merger.Close();
+                    if (i > 1 || !settings.PageFooter.ExcludeCoverPage) {
+                        // Add page number to the footer - Left
+                        var p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextLeft1, pdf, i))
+                            .SetTextAlignment(TextAlignment.LEFT)
+                            .SetFixedPosition(i, pageSideMargin, pageBottomMargin + textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
+                        canvas.Add(p);
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextLeft2, pdf, i))
+                            .SetTextAlignment(TextAlignment.LEFT)
+                            .SetFixedPosition(i, pageSideMargin, pageBottomMargin, pageSize.GetWidth() - 2 * pageSideMargin);
+                        canvas.Add(p);
+
+                        // Add page number to the footer - Center
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextCenter1, pdf, i))
+                            .SetTextAlignment(TextAlignment.CENTER)
+                            .SetFixedPosition(i, pageSideMargin, pageBottomMargin + textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
+                        canvas.Add(p);
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextCenter2, pdf, i))
+                            .SetTextAlignment(TextAlignment.CENTER)
+                            .SetFixedPosition(i, pageSideMargin, pageBottomMargin, pageSize.GetWidth() - 2 * pageSideMargin);
+                        canvas.Add(p);
+
+                        // Add page number to the footer - Right
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextRight1, pdf, i))
+                            .SetTextAlignment(TextAlignment.RIGHT)
+                            .SetFixedPosition(i, pageSideMargin, pageBottomMargin + textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
+                        canvas.Add(p);
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextRight2, pdf, i))
+                            .SetTextAlignment(TextAlignment.RIGHT)
+                            .SetFixedPosition(i, pageSideMargin, pageBottomMargin, pageSize.GetWidth() - 2 * pageSideMargin);
+                        canvas.Add(p);
+
+                        // Draw footer line
+                        if (settings.PageFooter.DrawLine) {
+                            canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
+                            .SetLineWidth(0.5f)
+                            .MoveTo(pageSideMargin, pageBottomMargin + textLineHeight + fontSize + 5).LineTo(pageSize.GetWidth() - pageSideMargin, pageBottomMargin + textLineHeight + fontSize + 5)
+                            .Stroke();
+                        }
+                    }
+                    canvas.Flush();
+                }
+                pdfCanvas.Release();
+
+                if (settings.RemoveAnnotationsOtherThanLinks) {
+                    // Clear existing annotations/comments
+                    var annotations = pdfPage.GetAnnotations();
+                    foreach (var annotation in annotations) {
+                        if (!annotation.GetSubtype().Equals(PdfName.Link)) {
+                            pdfPage.RemoveAnnotation(annotation);
+                        }
                     }
                 }
             }
+            Console.Write($"                                  \r");
+
+            pdf.SetFlushUnusedObjects(true);
+            writer.SetCompressionLevel(9);
         }
+        File.Delete(outputFile.FullName);
+        File.Move(output2File.FullName, outputFile.FullName);
     }
-    // Delete temporary files
-    if (File.Exists(coverTempFilename)) {
-        File.Delete(coverTempFilename);
+    catch (Exception ex) {
+        LogError($"Error: {ex.Message}");
+        LogError($"Error: Header and footer could not be added");
+        Console.WriteLine("Exiting...");
+        exitCode = 1;
+        return Task.FromResult(exitCode);
     }
-
-    // Add header and footer to all pages except the cover page
-    var tempOutput2Filename = GetTempOutputFilename(outputFile);
-    var output2File = new FileInfo(tempOutput2Filename);
-    using (var reader = new PdfReader(outputFile)) {
-        using (var writer = GetPdfWriter(output2File)) {
-            if (writer == null) { return; }
-            using (var pdf = new PdfDocument(reader, writer)) {
-                var numOfPages = pdf.GetNumberOfPages();
-                using (var document = new Document(pdf, pdf.GetDefaultPageSize(), false)) {
-                    const float textLineHeight = 15;
-                    const float fontSize = 9;
-
-                    var StyledParagraph = (string text) => {
-                        return new Paragraph(text)
-                            .SetMargin(0)
-                            .SetFont(PdfFontFactory.CreateFont(StandardFonts.TIMES_ROMAN))
-                            .SetFontSize(fontSize)
-                            .SetFontColor(ColorConstants.BLACK);
-                    };
-
-                    for (int i = 1; i <= numOfPages; i++) {
-                        Console.Write($"Processing page {i}...\r");
-
-                        PdfPage pdfPage = pdf.GetPage(i);
-                        var pageSize = pdfPage.GetPageSize();
-
-                        PdfCanvas pdfCanvas = new PdfCanvas(pdfPage.NewContentStreamBefore(), pdfPage.GetResources(), pdf);
-
-                        using (Canvas canvas = new Canvas(pdfCanvas, pdfPage.GetCropBox())) {
-                            if (i > 1 || !settings.PageHeader.ExcludeCoverPage) {
-                                // Add page header - Left
-                                Paragraph p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextLeft1, pdf, i))
-                                    .SetTextAlignment(TextAlignment.LEFT)
-                                    .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin, pageSize.GetWidth() - 2 * pageSideMargin);
-                                canvas.Add(p);
-                                p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextLeft2, pdf, i))
-                                    .SetTextAlignment(TextAlignment.LEFT)
-                                    .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin - textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
-                                canvas.Add(p);
-
-                                // Add page header - Center
-                                p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextCenter1, pdf, i))
-                                    .SetTextAlignment(TextAlignment.CENTER)
-                                    .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin, pageSize.GetWidth() - 2 * pageSideMargin);
-                                canvas.Add(p);
-                                p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextCenter2, pdf, i))
-                                    .SetTextAlignment(TextAlignment.CENTER)
-                                    .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin - textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
-                                canvas.Add(p);
-
-                                // Add page header - Right
-                                p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextRight1, pdf, i))
-                                    .SetTextAlignment(TextAlignment.RIGHT)
-                                    .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin, pageSize.GetWidth() - 2 * pageSideMargin);
-                                canvas.Add(p);
-                                p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextRight2, pdf, i))
-                                    .SetTextAlignment(TextAlignment.RIGHT)
-                                    .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin - textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
-                                canvas.Add(p);
-
-                                // Draw header line
-                                if (settings.PageHeader.DrawLine) {
-                                    canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
-                                    .SetLineWidth(0.5f)
-                                    .MoveTo(pageSideMargin, pageSize.GetHeight() - pageTopMargin - textLineHeight - 3).LineTo(pageSize.GetWidth() - pageSideMargin, pageSize.GetHeight() - pageTopMargin - textLineHeight - 3)
-                                    .Stroke();
-                                }
-                            }
-
-                            if (i > 1 || !settings.PageFooter.ExcludeCoverPage) {
-                                // Add page number to the footer - Left
-                                var p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextLeft1, pdf, i))
-                                    .SetTextAlignment(TextAlignment.LEFT)
-                                    .SetFixedPosition(i, pageSideMargin, pageBottomMargin + textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
-                                canvas.Add(p);
-                                p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextLeft2, pdf, i))
-                                    .SetTextAlignment(TextAlignment.LEFT)
-                                    .SetFixedPosition(i, pageSideMargin, pageBottomMargin, pageSize.GetWidth() - 2 * pageSideMargin);
-                                canvas.Add(p);
-
-                                // Add page number to the footer - Center
-                                p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextCenter1, pdf, i))
-                                    .SetTextAlignment(TextAlignment.CENTER)
-                                    .SetFixedPosition(i, pageSideMargin, pageBottomMargin + textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
-                                canvas.Add(p);
-                                p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextCenter2, pdf, i))
-                                    .SetTextAlignment(TextAlignment.CENTER)
-                                    .SetFixedPosition(i, pageSideMargin, pageBottomMargin, pageSize.GetWidth() - 2 * pageSideMargin);
-                                canvas.Add(p);
-
-                                // Add page number to the footer - Right
-                                p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextRight1, pdf, i))
-                                    .SetTextAlignment(TextAlignment.RIGHT)
-                                    .SetFixedPosition(i, pageSideMargin, pageBottomMargin + textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
-                                canvas.Add(p);
-                                p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextRight2, pdf, i))
-                                    .SetTextAlignment(TextAlignment.RIGHT)
-                                    .SetFixedPosition(i, pageSideMargin, pageBottomMargin, pageSize.GetWidth() - 2 * pageSideMargin);
-                                canvas.Add(p);
-
-                                // Draw footer line
-                                if (settings.PageFooter.DrawLine) {
-                                    canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
-                                    .SetLineWidth(0.5f)
-                                    .MoveTo(pageSideMargin, pageBottomMargin + textLineHeight + fontSize + 5).LineTo(pageSize.GetWidth() - pageSideMargin, pageBottomMargin + textLineHeight + fontSize + 5)
-                                    .Stroke();
-                                }
-                            }
-                            canvas.Flush();
-                        }
-                        pdfCanvas.Release();
-
-                        if (settings.RemoveAnnotationsOtherThanLinks) {
-                            // Clear existing annotations/comments
-                            var annotations = pdfPage.GetAnnotations();
-                            foreach (var annotation in annotations) {
-                                if (!annotation.GetSubtype().Equals(PdfName.Link)) {
-                                    pdfPage.RemoveAnnotation(annotation);
-                                }
-                            }
-                        }
-                    }
-                    Console.Write($"                                  \r");
-
-                    pdf.SetFlushUnusedObjects(true);
-                    writer.SetCompressionLevel(9);
-                }
-            }
-        }
-    }
-    File.Delete(outputFile.FullName);
-    File.Move(output2File.FullName, outputFile.FullName);
 
     #region Replace input file (if requested)
     if (useInputFileAsOutputFile) {
@@ -387,11 +404,9 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
             }
         }
         catch (Exception ex) {
-            var fgcolor = Console.ForegroundColor;
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"Error: {ex.Message}");
-            Console.WriteLine("The changes could not be applied to the input file (keeping temporary file)");
-            Console.ForegroundColor = fgcolor;
+            LogError($"Error: {ex.Message}");
+            LogError("The changes could not be applied to the input file (keeping temporary file)");
+            exitCode = 1;
         }
     }
     #endregion
@@ -401,6 +416,8 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
     Console.WriteLine($"Output file: {outputFile.FullName}");
 
     #endregion
+
+    return Task.FromResult(exitCode);
 },
 inputFileOption, outputFileOption, overwriteOption);
 
@@ -457,6 +474,14 @@ Option<bool?> DefineOverwriteOption()
 
 #region Helper functions
 
+static void LogError(string message)
+{
+    var fgcolor = Console.ForegroundColor;
+    Console.ForegroundColor = ConsoleColor.Red;
+    Console.WriteLine(message);
+    Console.ForegroundColor = fgcolor;
+}
+
 static PdfWriter? GetPdfWriter(FileInfo outputFile)
 {
     PdfWriter? writer = null;
@@ -468,10 +493,7 @@ static PdfWriter? GetPdfWriter(FileInfo outputFile)
             os = new FileStream(outputFile.FullName, FileMode.OpenOrCreate, FileAccess.Write);
         }
         catch (Exception) {
-            var fgcolor = Console.ForegroundColor;
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"Output file could not be opened for writing. Retrying {retryCount} times after {retryDelaySeconds} seconds...");
-            Console.ForegroundColor = fgcolor;
+            LogError($"Output file could not be opened for writing. Retrying {retryCount} times after {retryDelaySeconds} seconds...");
             Thread.Sleep(retryDelaySeconds * 1000);
         }
         retryCount--;
@@ -509,10 +531,7 @@ static string? ResolvePlaceholders(string text, PdfDocument pdfDocument, int cur
                 result = String.Format(result, DateTime.Now);
             }
             catch (Exception) {
-                var fgcolor = Console.ForegroundColor;
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Invalid date format specified: {text}");
-                Console.ForegroundColor = fgcolor;
+                LogError($"Invalid date format specified: {text}");
                 Console.WriteLine($"Using default: dd.MM.yyyy");
                 return String.Format("{" + index + ":dd.MM.yyyy}", DateTime.Now);
             }

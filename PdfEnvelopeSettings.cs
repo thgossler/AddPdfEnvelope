@@ -16,37 +16,37 @@
 
 public class CoverPage
 {
-    public string Topic { get; set; }
-    public string Subtopic { get; set; }
-    public string Title { get; set; }
-    public string Subtitle { get; set; }
-    public string Organization { get; set; }
-    public string Version { get; set; }
-    public string Author { get; set; }
-    public string Date { get; set; }
-    public string Disclaimer { get; set; }
+    public string Topic { get; set; } = string.Empty;
+    public string Subtopic { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Subtitle { get; set; } = string.Empty;
+    public string Organization { get; set; } = string.Empty;
+    public string Version { get; set; } = string.Empty;
+    public string Author { get; set; } = string.Empty;
+    public string Date { get; set; } = string.Empty;
+    public string Disclaimer { get; set; } = string.Empty;
 }
 
 public class PageHeader
 {
-    public string TextLeft1 { get; set; }
-    public string TextLeft2 { get; set; }
-    public string TextCenter1 { get; set; }
-    public string TextCenter2 { get; set; }
-    public string TextRight1 { get; set; }
-    public string TextRight2 { get; set; }
+    public string TextLeft1 { get; set; } = string.Empty;
+    public string TextLeft2 { get; set; } = string.Empty;
+    public string TextCenter1 { get; set; } = string.Empty;
+    public string TextCenter2 { get; set; } = string.Empty;
+    public string TextRight1 { get; set; } = string.Empty;
+    public string TextRight2 { get; set; } = string.Empty;
     public bool DrawLine { get; set; }
     public bool ExcludeCoverPage { get; set; }
 }
 
 public class PageFooter
 {
-    public string TextLeft1 { get; set; }
-    public string TextLeft2 { get; set; }
-    public string TextCenter1 { get; set; }
-    public string TextCenter2 { get; set; }
-    public string TextRight1 { get; set; }
-    public string TextRight2 { get; set; }
+    public string TextLeft1 { get; set; } = string.Empty;
+    public string TextLeft2 { get; set; } = string.Empty;
+    public string TextCenter1 { get; set; } = string.Empty;
+    public string TextCenter2 { get; set; } = string.Empty;
+    public string TextRight1 { get; set; } = string.Empty;
+    public string TextRight2 { get; set; } = string.Empty;
     public bool DrawLine { get; set; }
     public bool ExcludeCoverPage { get; set; }
 }
