@@ -43,7 +43,7 @@ sudo chmod +x ./AddPdfEnvelope-linux-x64
 ./AddPdfEnvelope-linux-x64 -f ../../../Test.pdf -o ../../../Test-result.pdf -y
 ```
 
-[![ReplacePdfHyperlinks screen shot][product-screenshot]]([https://github.com/thgossler/AddPdfEnvelope/])
+[![AddPdfEnvelope screen shot][product-screenshot]]([https://github.com/thgossler/AddPdfEnvelope/])
 
 The content of the added cover page, the header and the footer are configurable via `appsettings.json` file. Here is an example:
 
@@ -92,6 +92,10 @@ The content of the added cover page, the header and the footer are configurable 
 }
 
 ```
+
+The result looks like that:
+
+[![AddPdfEnvelope screen shot][result-screenshot]]([https://github.com/thgossler/AddPdfEnvelope/])
 
 > _**Note:** This tool was written by me in my spare time and will be developed only sporadically._
 
@@ -169,3 +173,4 @@ Distributed under the AGPL License. See [`LICENSE`](https://github.com/thgossler
 [license-shield]: https://img.shields.io/github/license/thgossler/AddPdfEnvelope.svg
 [license-url]: https://github.com/thgossler/AddPdfEnvelope/blob/main/LICENSE
 [product-screenshot]: images/screenshot.png
+[result-screenshot]: images/screenshot2.png
