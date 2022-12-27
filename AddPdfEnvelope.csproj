@@ -10,11 +10,11 @@
     <Description>A CLI tool for Windows and Linux to add a cover page, header and footer to a PDF document.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/thgossler/AddPdfEnvelope</RepositoryUrl>
-    <AssemblyVersion>0.3.2</AssemblyVersion>
+    <AssemblyVersion>0.3.3</AssemblyVersion>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-    <FileVersion>0.3.2</FileVersion>
-    <Version>$(VersionPrefix)0.3.2</Version>
+    <FileVersion>0.3.3</FileVersion>
+    <Version>$(VersionPrefix)0.3.3</Version>
   </PropertyGroup>
 
   <ItemGroup>
