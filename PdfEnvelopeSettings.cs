@@ -11,6 +11,8 @@
     public PageHeader PageHeader { get; set; }
     public PageFooter PageFooter { get; set; }
 
+    public int PageNumberOffset { get; set; } = -1;
+
     public bool RemoveAnnotationsOtherThanLinks { get; set; }
 }
 
@@ -25,6 +27,7 @@ public class CoverPage
     public string Author { get; set; } = string.Empty;
     public string Date { get; set; } = string.Empty;
     public string Disclaimer { get; set; } = string.Empty;
+    public bool ShowSignatureArea { get; set; } = false;
 }
 
 public class PageHeader

@@ -139,16 +139,17 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                 using (Canvas canvas = new Canvas(pdfCanvas, pdfPage.GetCropBox())) {
                     const float textSideMargin = 20;
 
-                    canvas.SetFont(PdfFontFactory.CreateFont(StandardFonts.TIMES_ROMAN));
+                    var font = PdfFontFactory.CreateFont(StandardFonts.TIMES_ROMAN);
+                    canvas.SetFont(font);
 
                     // Topic
-                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Topic, coverPdf, 1))
+                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Topic, coverPdf, 1, settings.PageNumberOffset))
                         .SetTextAlignment(TextAlignment.LEFT)
                         .SetFontSize(22)
                         .SetBold()
                         .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 120, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
                     // Subtopic
-                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Subtopic, coverPdf, 1))
+                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Subtopic, coverPdf, 1, settings.PageNumberOffset))
                         .SetTextAlignment(TextAlignment.LEFT)
                         .SetFontSize(22)
                         .SetBold()
@@ -171,35 +172,37 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                             .SetFixedPosition(1, disclaimerX + disclaimerMargin, disclaimerY - disclaimerHeight + disclaimerMargin, disclaimerWidth - 2 * disclaimerMargin));
                     }
                     // Title
-                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Title, coverPdf, 1))
+                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Title, coverPdf, 1, settings.PageNumberOffset))
                         .SetTextAlignment(TextAlignment.CENTER)
                         .SetFontSize(24)
                         .SetBold()
                         .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 250, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
                     // Subtitle
-                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Subtitle, coverPdf, 1))
+                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Subtitle, coverPdf, 1, settings.PageNumberOffset))
                         .SetTextAlignment(TextAlignment.CENTER)
                         .SetFontSize(18)
                         .SetBold()
                         .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 280, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
                     // Version
-                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Version, coverPdf, 1))
+                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Version, coverPdf, 1, settings.PageNumberOffset))
                         .SetTextAlignment(TextAlignment.CENTER)
                         .SetFontSize(16)
                         .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 370, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
                     // Author
-                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Author, coverPdf, 1))
+                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Author, coverPdf, 1, settings.PageNumberOffset))
                         .SetTextAlignment(TextAlignment.CENTER)
                         .SetFontSize(16)
                         .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 400, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
                     // Date
-                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Date, coverPdf, 1))
+                    canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Date, coverPdf, 1, settings.PageNumberOffset))
                         .SetTextAlignment(TextAlignment.CENTER)
                         .SetFontSize(16)
                         .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 430, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
                     // Frames
-                    var orgTextWidth = !string.IsNullOrEmpty(settings.CoverPage.Organization) ? settings.CoverPage.Organization.Length * 8 : 0;
+                    float orgTextSize = 14;
+                    var orgTextWidth = !string.IsNullOrEmpty(settings.CoverPage.Organization) ? font.GetWidth(settings.CoverPage.Organization, orgTextSize) + 8 : 0;
                     var framesTopY = pageSize.GetHeight() - pageTopMargin - 170;
+                    var mainBoxHeight = framesTopY - 20 - pageBottomMargin - 100;
                     canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
                         .SetLineWidth(1.0f)
                         .SetFillColor(ColorConstants.BLACK)
@@ -208,15 +211,35 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                         .Stroke();
                     canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
                         .SetLineWidth(1.0f)
-                        .Rectangle(pageSideMargin + textSideMargin, framesTopY - 20, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin, -(framesTopY - 20 - pageBottomMargin - 100))
+                        .Rectangle(pageSideMargin + textSideMargin, framesTopY - 20, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin, -mainBoxHeight)
                         .Stroke();
                     if (!string.IsNullOrEmpty(settings.CoverPage.Organization)) {
                         // Organization
-                        canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Organization, coverPdf, 1))
+                        canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Organization, coverPdf, 1, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.RIGHT)
-                            .SetFontSize(14)
+                            .SetFontSize(orgTextSize)
                             .SetBold()
-                            .SetFixedPosition(1, pageSize.GetWidth() - pageSideMargin - textSideMargin - orgTextWidth, framesTopY - 19, orgTextWidth));
+                            .SetFixedPosition(1, pageSize.GetWidth() - pageSideMargin - textSideMargin - orgTextWidth, framesTopY - 18, orgTextWidth));
+                    }
+                    if (settings.CoverPage.ShowSignatureArea) {
+                        var sigAreaHeight = 80;
+                        var sigAreaTop = framesTopY - 20 - mainBoxHeight + sigAreaHeight;
+                        canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
+                            .SetLineWidth(1.0f)
+                            .Rectangle(pageSideMargin + textSideMargin, sigAreaTop, (pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin)/2, -sigAreaHeight)
+                            .Stroke();
+                        canvas.Add(new Paragraph(ResolvePlaceholders("Author", coverPdf, 1, settings.PageNumberOffset))
+                            .SetTextAlignment(TextAlignment.LEFT)
+                            .SetFontSize(12)
+                            .SetFixedPosition(1, pageSideMargin + textSideMargin + 10, sigAreaTop - 20, pageSize.GetWidth() / 3));
+                        canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
+                            .SetLineWidth(1.0f)
+                            .Rectangle(pageSideMargin + textSideMargin + (pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin) / 2, sigAreaTop, (pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin) / 2, -sigAreaHeight)
+                            .Stroke();
+                        canvas.Add(new Paragraph(ResolvePlaceholders("Approver", coverPdf, 1, settings.PageNumberOffset))
+                            .SetTextAlignment(TextAlignment.LEFT)
+                            .SetFontSize(12)
+                            .SetFixedPosition(1, pageSideMargin + textSideMargin + (pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin) / 2 + 10, sigAreaTop - 20, pageSize.GetWidth() / 3));
                     }
                 }
                 coverPdf.SetFlushUnusedObjects(true);
@@ -285,31 +308,31 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                 using (Canvas canvas = new Canvas(pdfCanvas, pdfPage.GetCropBox())) {
                     if (i > 1 || !settings.PageHeader.ExcludeCoverPage) {
                         // Add page header - Left
-                        Paragraph p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextLeft1, pdf, i))
+                        Paragraph p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextLeft1, pdf, i, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.LEFT)
                             .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin, pageSize.GetWidth() - 2 * pageSideMargin);
                         canvas.Add(p);
-                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextLeft2, pdf, i))
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextLeft2, pdf, i, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.LEFT)
                             .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin - textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
                         canvas.Add(p);
 
                         // Add page header - Center
-                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextCenter1, pdf, i))
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextCenter1, pdf, i, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.CENTER)
                             .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin, pageSize.GetWidth() - 2 * pageSideMargin);
                         canvas.Add(p);
-                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextCenter2, pdf, i))
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextCenter2, pdf, i, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.CENTER)
                             .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin - textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
                         canvas.Add(p);
 
                         // Add page header - Right
-                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextRight1, pdf, i))
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextRight1, pdf, i, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.RIGHT)
                             .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin, pageSize.GetWidth() - 2 * pageSideMargin);
                         canvas.Add(p);
-                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextRight2, pdf, i))
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageHeader.TextRight2, pdf, i, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.RIGHT)
                             .SetFixedPosition(i, pageSideMargin, pageSize.GetHeight() - pageTopMargin - textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
                         canvas.Add(p);
@@ -325,31 +348,31 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
 
                     if (i > 1 || !settings.PageFooter.ExcludeCoverPage) {
                         // Add page number to the footer - Left
-                        var p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextLeft1, pdf, i))
+                        var p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextLeft1, pdf, i, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.LEFT)
                             .SetFixedPosition(i, pageSideMargin, pageBottomMargin + textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
                         canvas.Add(p);
-                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextLeft2, pdf, i))
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextLeft2, pdf, i, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.LEFT)
                             .SetFixedPosition(i, pageSideMargin, pageBottomMargin, pageSize.GetWidth() - 2 * pageSideMargin);
                         canvas.Add(p);
 
                         // Add page number to the footer - Center
-                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextCenter1, pdf, i))
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextCenter1, pdf, i, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.CENTER)
                             .SetFixedPosition(i, pageSideMargin, pageBottomMargin + textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
                         canvas.Add(p);
-                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextCenter2, pdf, i))
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextCenter2, pdf, i, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.CENTER)
                             .SetFixedPosition(i, pageSideMargin, pageBottomMargin, pageSize.GetWidth() - 2 * pageSideMargin);
                         canvas.Add(p);
 
                         // Add page number to the footer - Right
-                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextRight1, pdf, i))
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextRight1, pdf, i, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.RIGHT)
                             .SetFixedPosition(i, pageSideMargin, pageBottomMargin + textLineHeight, pageSize.GetWidth() - 2 * pageSideMargin);
                         canvas.Add(p);
-                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextRight2, pdf, i))
+                        p = StyledParagraph(ResolvePlaceholders(settings.PageFooter.TextRight2, pdf, i, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.RIGHT)
                             .SetFixedPosition(i, pageSideMargin, pageBottomMargin, pageSize.GetWidth() - 2 * pageSideMargin);
                         canvas.Add(p);
@@ -513,7 +536,7 @@ static string GetTempOutputFilename(FileInfo? baseFileInfo)
         HashCode.Combine(baseFileInfo.FullName, DateTime.Now.Ticks.ToString()) + baseFileInfo.Extension;
 }
 
-static string? ResolvePlaceholders(string text, PdfDocument pdfDocument, int currentPageNumber)
+static string? ResolvePlaceholders(string text, PdfDocument pdfDocument, int currentPageNumber, int pageNumberOffset = 0)
 {
     if (string.IsNullOrWhiteSpace(text)) return string.Empty;
 
@@ -538,11 +561,11 @@ static string? ResolvePlaceholders(string text, PdfDocument pdfDocument, int cur
         }
         else if (placeholder.Groups[0].Value.Contains("pageNum")) {
             // {pageNum}
-            result = result.Replace("{pageNum}", currentPageNumber.ToString());
+            result = (currentPageNumber == 1) ? "{numOfPages} pages" : result.Replace("{pageNum}", (currentPageNumber + pageNumberOffset).ToString());
         }
         else if (placeholder.Groups[0].Value.Contains("numOfPages")) {
             // {numOfPages}
-            result = result.Replace("{numOfPages}", pdfDocument.GetNumberOfPages().ToString());
+            result = result.Replace("{numOfPages}", (pdfDocument.GetNumberOfPages() + pageNumberOffset).ToString());
         }
     }
 
