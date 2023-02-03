@@ -170,6 +170,6 @@ Distributed under the AGPL License. See [`LICENSE`](https://github.com/thgossler
 [issues-shield]: https://img.shields.io/github/issues/thgossler/AddPdfEnvelope.svg
 [issues-url]: https://github.com/thgossler/AddPdfEnvelope/issues
 [license-shield]: https://img.shields.io/github/license/thgossler/AddPdfEnvelope.svg
-[license-url]: https://github.com/thgossler/AddPdfEnvelope/blob/main/LICENSE
+[license-url]: https://github.com/thgossler/AddPdfEnvelope/blob/master/LICENSE
 [product-screenshot]: images/screenshot.png
 [result-screenshot]: images/screenshot2.png
