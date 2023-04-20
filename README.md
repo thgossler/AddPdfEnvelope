@@ -53,21 +53,22 @@ The content of the added cover page, the header and the footer are configurable 
     "CoverPage": {
       "Topic": "Product Name",
       "Subtopic": "Version 2022",
-      "Title": "System Architecture",
-      "Subtitle": "(Architecture Specification)",
+      "Title": "Feature Name",
+      "Subtitle": "Architecture Specification",
       "Organization": "Department",
-      "Version": "Revision: 0.1 (for review)",
+      "Version": "Revision 0.1 (for review)",
       "Author": "Author: Surname, Given name",
       "Date": "Date: {date:dd.MM.yyyy}",
-      "Disclaimer": "This printed copy is not subject to any change control."
+      "Disclaimer": "This printed copy is not subject to any change control.",
+      "ShowSignatureArea": true
     },
     "PageHeader": {
-      "TextLeft1": "System Architecture Specification",
-      "TextLeft2": "Version 2022",
+      "TextLeft1": "Product Name, Version 2022",
+      "TextLeft2": "Architecture Specification",
       "TextCenter1": "",
       "TextCenter2": "",
       "TextRight1": "",
-      "TextRight2": "Revision: 0.1",
+      "TextRight2": "Feature Name, Revision 0.1",
       "DrawLine": true,
       "ExcludeCoverPage": true
     },
@@ -75,12 +76,13 @@ The content of the added cover page, the header and the footer are configurable 
       "TextLeft1": "",
       "TextLeft2": "Department",
       "TextCenter1": "© My Company {date:yyyy}. All rights reserved.",
-      "TextCenter2": "Restricted (for internal use only)",
+      "TextCenter2": "Restricted (for internal use only).",
       "TextRight1": "",
       "TextRight2": "Page {pageNum} of {numOfPages}",
       "DrawLine": true,
       "ExcludeCoverPage": false
     },
+    "PageNumberOffset": -1,
     "RemoveAnnotationsOtherThanLinks": true
   },
   "Logging": {
@@ -90,7 +92,6 @@ The content of the added cover page, the header and the footer are configurable 
     }
   }
 }
-
 ```
 
 The result looks like that:
@@ -169,6 +170,6 @@ Distributed under the AGPL License. See [`LICENSE`](https://github.com/thgossler
 [issues-shield]: https://img.shields.io/github/issues/thgossler/AddPdfEnvelope.svg
 [issues-url]: https://github.com/thgossler/AddPdfEnvelope/issues
 [license-shield]: https://img.shields.io/github/license/thgossler/AddPdfEnvelope.svg
-[license-url]: https://github.com/thgossler/AddPdfEnvelope/blob/main/LICENSE
+[license-url]: https://github.com/thgossler/AddPdfEnvelope/blob/master/LICENSE.txt
 [product-screenshot]: images/screenshot.png
 [result-screenshot]: images/screenshot2.png
