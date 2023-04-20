@@ -228,7 +228,11 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                             .SetLineWidth(1.0f)
                             .Rectangle(pageSideMargin + textSideMargin, sigAreaTop, (pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin)/2, -sigAreaHeight)
                             .Stroke();
-                        canvas.Add(new Paragraph(ResolvePlaceholders("Author", coverPdf, 1, settings.PageNumberOffset))
+                        var authorText = "Author";
+                        if (!string.IsNullOrWhiteSpace(settings.CoverPage.RoleAuthor)) {
+                            authorText += $" ({settings.CoverPage.RoleAuthor})";
+                        }
+                        canvas.Add(new Paragraph(ResolvePlaceholders(authorText, coverPdf, 1, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.LEFT)
                             .SetFontSize(12)
                             .SetFixedPosition(1, pageSideMargin + textSideMargin + 10, sigAreaTop - 20, pageSize.GetWidth() / 3));
@@ -236,7 +240,11 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                             .SetLineWidth(1.0f)
                             .Rectangle(pageSideMargin + textSideMargin + (pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin) / 2, sigAreaTop, (pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin) / 2, -sigAreaHeight)
                             .Stroke();
-                        canvas.Add(new Paragraph(ResolvePlaceholders("Approver", coverPdf, 1, settings.PageNumberOffset))
+                        var approverText = "Approver";
+                        if (!string.IsNullOrWhiteSpace(settings.CoverPage.RoleApprover)) {
+                            approverText += $" ({settings.CoverPage.RoleApprover})";
+                        }
+                        canvas.Add(new Paragraph(ResolvePlaceholders(approverText, coverPdf, 1, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.LEFT)
                             .SetFontSize(12)
                             .SetFixedPosition(1, pageSideMargin + textSideMargin + (pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin) / 2 + 10, sigAreaTop - 20, pageSize.GetWidth() / 3));

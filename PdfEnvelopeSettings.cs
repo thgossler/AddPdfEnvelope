@@ -28,6 +28,9 @@ public class CoverPage
     public string Date { get; set; } = string.Empty;
     public string Disclaimer { get; set; } = string.Empty;
     public bool ShowSignatureArea { get; set; } = false;
+    public string RoleAuthor { get; set; } = "AR";
+
+    public string RoleApprover { get; set; } = "AR";
 }
 
 public class PageHeader
