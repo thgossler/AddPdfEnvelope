@@ -28,8 +28,9 @@ public class CoverPage
     public string Date { get; set; } = string.Empty;
     public string Disclaimer { get; set; } = string.Empty;
     public bool ShowSignatureArea { get; set; } = false;
+    public bool AddAdobeSignTags { get; set; } = false;
+    public string AdobeSignTagPattern { get; set; } = "";
     public string RoleAuthor { get; set; } = "AR";
-
     public string RoleApprover { get; set; } = "AR";
 }
 

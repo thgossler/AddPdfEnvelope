@@ -3,5 +3,5 @@
 namespace AddPdfEnvelope;
 internal static class RegExs
 {
-    public static Regex PlaceholderRegEx = new Regex(@"\{.*?\}", RegexOptions.Compiled);
+    public static Regex PlaceholderRegEx = new Regex(@"{[^{}]+?}", RegexOptions.Compiled);
 }

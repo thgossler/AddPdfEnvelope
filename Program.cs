@@ -213,20 +213,21 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                         .SetLineWidth(1.0f)
                         .Rectangle(pageSideMargin + textSideMargin, framesTopY - 20, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin, -mainBoxHeight)
                         .Stroke();
+                    // Organization
                     if (!string.IsNullOrEmpty(settings.CoverPage.Organization)) {
-                        // Organization
                         canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Organization, coverPdf, 1, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.RIGHT)
                             .SetFontSize(orgTextSize)
                             .SetBold()
                             .SetFixedPosition(1, pageSize.GetWidth() - pageSideMargin - textSideMargin - orgTextWidth, framesTopY - 18, orgTextWidth));
                     }
+                    // Signature Area
                     if (settings.CoverPage.ShowSignatureArea) {
                         var sigAreaHeight = 80;
-                        var sigAreaTop = framesTopY - 20 - mainBoxHeight + sigAreaHeight;
+                        var sigAreaTop = framesTopY - 20 - mainBoxHeight + 2*sigAreaHeight;
                         canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
                             .SetLineWidth(1.0f)
-                            .Rectangle(pageSideMargin + textSideMargin, sigAreaTop, (pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin)/2, -sigAreaHeight)
+                            .Rectangle(pageSideMargin + textSideMargin, sigAreaTop, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin, -sigAreaHeight)
                             .Stroke();
                         var authorText = "Author";
                         if (!string.IsNullOrWhiteSpace(settings.CoverPage.RoleAuthor)) {
@@ -238,7 +239,7 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                             .SetFixedPosition(1, pageSideMargin + textSideMargin + 10, sigAreaTop - 20, pageSize.GetWidth() / 3));
                         canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
                             .SetLineWidth(1.0f)
-                            .Rectangle(pageSideMargin + textSideMargin + (pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin) / 2, sigAreaTop, (pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin) / 2, -sigAreaHeight)
+                            .Rectangle(pageSideMargin + textSideMargin, sigAreaTop - sigAreaHeight, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin, -sigAreaHeight)
                             .Stroke();
                         var approverText = "Approver";
                         if (!string.IsNullOrWhiteSpace(settings.CoverPage.RoleApprover)) {
@@ -247,7 +248,22 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                         canvas.Add(new Paragraph(ResolvePlaceholders(approverText, coverPdf, 1, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.LEFT)
                             .SetFontSize(12)
-                            .SetFixedPosition(1, pageSideMargin + textSideMargin + (pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin) / 2 + 10, sigAreaTop - 20, pageSize.GetWidth() / 3));
+                            .SetFixedPosition(1, pageSideMargin + textSideMargin + 10, sigAreaTop - sigAreaHeight - 20, pageSize.GetWidth() / 3));
+                        // Adobe Sign Tags
+                        var signaturePlaceholder = settings.CoverPage.AdobeSignTagPattern ?? "";
+                        if (settings.CoverPage.AddAdobeSignTags) {
+                            if (String.IsNullOrWhiteSpace(signaturePlaceholder)) {
+                                signaturePlaceholder = "{{SigB_es_:signer{sigNum}:signatureblock}}";
+                            }
+                            canvas.Add(new Paragraph(ResolvePlaceholders(signaturePlaceholder, coverPdf, 1, settings.PageNumberOffset))
+                                .SetTextAlignment(TextAlignment.LEFT)
+                                .SetFontSize(12)
+                                .SetFixedPosition(1, pageSideMargin + textSideMargin + 10, sigAreaTop - 40, pageSize.GetWidth() / 3));
+                            canvas.Add(new Paragraph(ResolvePlaceholders(signaturePlaceholder, coverPdf, 1, settings.PageNumberOffset))
+                                .SetTextAlignment(TextAlignment.LEFT)
+                                .SetFontSize(12)
+                                .SetFixedPosition(1, pageSideMargin + textSideMargin + 10, sigAreaTop - sigAreaHeight - 40, pageSize.GetWidth() / 3));
+                        }
                     }
                 }
                 coverPdf.SetFlushUnusedObjects(true);
@@ -566,6 +582,10 @@ static string? ResolvePlaceholders(string text, PdfDocument pdfDocument, int cur
                 Console.WriteLine($"Using default: dd.MM.yyyy");
                 return String.Format("{" + index + ":dd.MM.yyyy}", DateTime.Now);
             }
+        }
+        else if (placeholder.Groups[0].Value.Contains("sigNum")) {
+            // {sigNum}
+            result = result.Replace("{sigNum}", (Globals.CurrentSigNum++).ToString());
         }
         else if (placeholder.Groups[0].Value.Contains("pageNum")) {
             // {pageNum}
