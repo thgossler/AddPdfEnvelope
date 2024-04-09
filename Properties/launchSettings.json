@@ -1,12 +1,12 @@
 {
   "profiles": {
-    "ReplacePdfHyperlinks": {
-      "commandName": "Project",
-      "commandLineArgs": "-f ../../../Test.pdf -o ../../../Test-Result.pdf -y"
-    },
     "WSL": {
       "commandName": "WSL2",
       "distributionName": ""
+    },
+    "AddPdfEnvelope": {
+      "commandName": "Project",
+      "commandLineArgs": "-f ../../../Test.pdf -o ../../../Test-Result.pdf -y"
     }
   }
 }

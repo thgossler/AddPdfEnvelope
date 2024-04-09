@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Copyright>Copyright (c) Thomas Gossler</Copyright>
@@ -10,20 +10,23 @@
     <Description>A CLI tool for Windows and Linux to add a cover page, header and footer to a PDF document.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/thgossler/AddPdfEnvelope</RepositoryUrl>
-    <AssemblyVersion>0.4.3</AssemblyVersion>
+    <AssemblyVersion>0.5.0</AssemblyVersion>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-    <FileVersion>0.4.3</FileVersion>
-    <Version>$(VersionPrefix)0.4.3</Version>
+    <FileVersion>0.5.0</FileVersion>
+    <Version>$(VersionPrefix)0.5.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <None Remove="Test.pdf" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="itext7" Version="7.2.4" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="7.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
+    <PackageReference Include="itext" Version="8.0.3" />
+    <PackageReference Include="itext.commons" Version="8.0.3" />
+    <PackageReference Include="itext7" Version="8.0.3" />
+    <PackageReference Include="itext7.bouncy-castle-adapter" Version="8.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
   </ItemGroup>
   <ItemGroup>
