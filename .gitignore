@@ -364,3 +364,6 @@ FodyWeavers.xsd
 
 # Ignore test output file
 Test-Result.pdf
+
+# Ignore the built publish binaries
+publish/
