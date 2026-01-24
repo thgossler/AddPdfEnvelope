@@ -54,11 +54,11 @@ settings = config.GetRequiredSection("PdfEnvelope").Get<PdfEnvelopeSettings>();
 
 var command = new RootCommand("CLI tool to add a cover page, header and footer to a PDF file.");
 Option<FileInfo?> inputFileOption = DefineInputFileOption();
-command.AddOption(inputFileOption);
+command.Options.Add(inputFileOption);
 Option<FileInfo?> outputFileOption = DefineOutputFileOption();
-command.AddOption(outputFileOption);
+command.Options.Add(outputFileOption);
 Option<bool?> overwriteOption = DefineOverwriteOption();
-command.AddOption(overwriteOption);
+command.Options.Add(overwriteOption);
 
 #endregion
 
@@ -67,7 +67,10 @@ command.AddOption(overwriteOption);
 
 // Command handler
 
-command.SetHandler((inputFile, outputFile, overwrite) => {
+command.SetAction((parseResult) => {
+    var inputFile = parseResult.GetValue(inputFileOption);
+    var outputFile = parseResult.GetValue(outputFileOption);
+    var overwrite = parseResult.GetValue(overwriteOption);
     int exitCode = 0;
 
     var useInputFileAsOutputFile = false;
@@ -146,13 +149,13 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                     canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Topic, coverPdf, 1, settings.PageNumberOffset))
                         .SetTextAlignment(TextAlignment.LEFT)
                         .SetFontSize(22)
-                        .SetBold()
+                        .SimulateBold()
                         .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 120, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
                     // Subtopic
                     canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Subtopic, coverPdf, 1, settings.PageNumberOffset))
                         .SetTextAlignment(TextAlignment.LEFT)
                         .SetFontSize(22)
-                        .SetBold()
+                        .SimulateBold()
                         .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 150, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
                     // Disclaimer
                     if (!string.IsNullOrWhiteSpace(settings.CoverPage.Disclaimer)) {
@@ -175,13 +178,13 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                     canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Title, coverPdf, 1, settings.PageNumberOffset))
                         .SetTextAlignment(TextAlignment.CENTER)
                         .SetFontSize(24)
-                        .SetBold()
+                        .SimulateBold()
                         .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 250, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
                     // Subtitle
                     canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Subtitle, coverPdf, 1, settings.PageNumberOffset))
                         .SetTextAlignment(TextAlignment.CENTER)
                         .SetFontSize(18)
-                        .SetBold()
+                        .SimulateBold()
                         .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 280, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
                     // Version
                     canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Version, coverPdf, 1, settings.PageNumberOffset))
@@ -218,7 +221,7 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
                         canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Organization, coverPdf, 1, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.RIGHT)
                             .SetFontSize(orgTextSize)
-                            .SetBold()
+                            .SimulateBold()
                             .SetFixedPosition(1, pageSize.GetWidth() - pageSideMargin - textSideMargin - orgTextWidth, framesTopY - 18, orgTextWidth));
                     }
                     // Signature Area
@@ -465,10 +468,9 @@ command.SetHandler((inputFile, outputFile, overwrite) => {
     #endregion
 
     return Task.FromResult(exitCode);
-},
-inputFileOption, outputFileOption, overwriteOption);
+});
 
-return await command.InvokeAsync(args);
+return await command.Parse(args).InvokeAsync();
 
 #endregion
 
@@ -477,43 +479,44 @@ return await command.InvokeAsync(args);
 
 Option<FileInfo?> DefineInputFileOption()
 {
-    var inputFileOption = new Option<FileInfo?>(
-        name: "--inputFile",
-        description: "The PDF file to process.",
-        parseArgument: result => {
-            if (result.Tokens.Count == 0) {
-                result.ErrorMessage = "Option '--inputFile' is required.";
-                return null;
-            }
-            string? filePath = result.Tokens.Single().Value;
-            if (!File.Exists(filePath)) {
-                result.ErrorMessage = "Input file does not exist";
-                return null;
-            }
-            else {
-                return new FileInfo(filePath);
-            }
-        }) { IsRequired = true };
-    inputFileOption.AddAlias("-f");
+    var inputFileOption = new Option<FileInfo?>("--inputFile", "-f")
+    {
+        Description = "The PDF file to process.",
+        Required = true
+    };
+    inputFileOption.CustomParser = result => {
+        if (result.Tokens.Count == 0) {
+            result.AddError("Option '--inputFile' is required.");
+            return null;
+        }
+        string? filePath = result.Tokens.Single().Value;
+        if (!File.Exists(filePath)) {
+            result.AddError("Input file does not exist");
+            return null;
+        }
+        else {
+            return new FileInfo(filePath);
+        }
+    };
     return inputFileOption;
 }
 
 Option<FileInfo?> DefineOutputFileOption()
 {
-    var outputFileOption = new Option<FileInfo?>(
-        name: "--outputFile",
-        description: "The output PDF file path.");
-    outputFileOption.AddAlias("-o");
+    var outputFileOption = new Option<FileInfo?>("--outputFile", "-o")
+    {
+        Description = "The output PDF file path."
+    };
     return outputFileOption;
 }
 
 Option<bool?> DefineOverwriteOption()
 {
-    var overwriteOption = new Option<bool?>(
-        name: "--overwrite-yes",
-        description: "Overwrite the existing output file without confirmation.",
-        getDefaultValue: () => false);
-    overwriteOption.AddAlias("-y");
+    var overwriteOption = new Option<bool?>("--overwrite-yes", "-y")
+    {
+        Description = "Overwrite the existing output file without confirmation.",
+        DefaultValueFactory = _ => false
+    };
     return overwriteOption;
 }
 

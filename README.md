@@ -31,7 +31,7 @@
 
 This is a simple .NET command line (CLI) tool for Windows and Linux which helps adding a cover page, a header and a footer to an existing PDF document. 
 
-The tool uses the iText7 library for PDF processing which is licensed under AGPL for non-commercial use. Hence, this tool is also published under the AGPL license.
+The tool uses the iText9 library for PDF processing which is licensed under AGPL for non-commercial use. Hence, this tool is also published under the AGPL license.
 
 The command line interface is very simple as shown in the following picture. Here are also a few example command lines.
 
@@ -101,16 +101,16 @@ The result looks like that:
 
 ### Built With
 
-* [.NET 8 (C#)](https://dotnet.microsoft.com/en-us/)
+* [.NET 10 (C#)](https://dotnet.microsoft.com/en-us/)
 * [System.CommandLine](https://github.com/dotnet/command-line-api)
-* [iText7 for .NET](https://github.com/itext/itext7-dotnet)
+* [iText for .NET](https://github.com/itext/itext-dotnet)
 
 
 ## Getting Started
 
 ### Prerequisites
 
-* Latest .NET SDK
+* Latest .NET 10 SDK
 
 
 ### Installation as Tool for Use
