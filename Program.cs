@@ -568,6 +568,7 @@ static string? ResolvePlaceholders(string text, PdfDocument pdfDocument, int cur
     if (string.IsNullOrWhiteSpace(text)) return string.Empty;
 
     string result = text;
+    string? signatureNumber = null;
 
     var placeholders = RegExs.PlaceholderRegEx.Matches(text);
     for (int i = 0; i < placeholders.Count; i++) {
@@ -588,7 +589,8 @@ static string? ResolvePlaceholders(string text, PdfDocument pdfDocument, int cur
         }
         else if (placeholder.Groups[0].Value.Contains("sigNum")) {
             // {sigNum}
-            result = result.Replace("{sigNum}", (Globals.CurrentSigNum++).ToString());
+            signatureNumber ??= (Globals.CurrentSigNum++).ToString();
+            result = result.Replace("{sigNum}", signatureNumber);
         }
         else if (placeholder.Groups[0].Value.Contains("pageNum")) {
             // {pageNum}

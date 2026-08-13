@@ -60,7 +60,11 @@ The content of the added cover page, the header and the footer are configurable 
       "Author": "Author: Surname, Given name",
       "Date": "Date: {date:dd.MM.yyyy}",
       "Disclaimer": "This printed copy is not subject to any change control.",
-      "ShowSignatureArea": true
+      "ShowSignatureArea": true,
+      "AddAdobeSignTags": true,
+      "AdobeSignTagPattern": "{{Sig{sigNum}_es_:signer{sigNum}:signatureblock}}",
+      "RoleAuthor": "AR",
+      "RoleApprover": "AR"
     },
     "PageHeader": {
       "TextLeft1": "Product Name, Version 2022",
@@ -93,6 +97,8 @@ The content of the added cover page, the header and the footer are configurable 
   }
 }
 ```
+
+When `AddAdobeSignTags` is enabled, each application of `AdobeSignTagPattern` receives the next signature number. Multiple `{sigNum}` placeholders within one pattern application use the same number, while separate applications receive distinct numbers.
 
 The result looks like that:
 
