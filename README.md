@@ -146,6 +146,24 @@ The result looks like that:
 Alternatively, you can open the folder in [VS Code](https://code.visualstudio.com/) or the solution (.sln file) in the [Microsoft Visual Studio IDE](https://visualstudio.microsoft.com/vs/) and press F5.
 
 
+### Versioning and Releases
+
+The `<Version>` property in `AddPdfEnvelope.csproj` is the source of truth for release versions. Use the cross-platform PowerShell script to update the project version and its related version properties:
+
+```powershell
+pwsh ./bump-version.ps1 -Patch
+pwsh ./bump-version.ps1 -Minor
+pwsh ./bump-version.ps1 -Major
+```
+
+Push a tag matching the updated version, such as `v0.6.2`, to build the six self-contained platform packages and publish them as a GitHub release:
+
+```bash
+git tag v0.6.2
+git push origin v0.6.2
+```
+
+
 ## Contributing
 
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.

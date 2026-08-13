@@ -46,7 +46,8 @@ for %%R in (%RIDS%) do (
     powershell -NoProfile -Command "Compress-Archive -Path '!OUTPUT_DIR!\*' -DestinationPath '%PUBLISH_DIR%\!ZIP_NAME!' -Force"
     
     if errorlevel 1 (
-        echo WARNING: Failed to create ZIP for %%R
+        echo ERROR: Failed to create ZIP for %%R
+        exit /b 1
     ) else (
         echo Created: %PUBLISH_DIR%\!ZIP_NAME!
     )

@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Read project version
+        id: version
+        shell: bash
+        run: |
+          version="$(dotnet msbuild AddPdfEnvelope.csproj -nologo -getProperty:Version)"
+          if [[ -z "$version" ]]; then
+            echo "The project Version property is empty." >&2
+            exit 1
+          fi
+          if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?([+][0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "The evaluated project Version is not valid SemVer: $version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Release version: $version"
+
+      - name: Verify tag matches project version
+        env:
+          PROJECT_VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          expected_tag="v${PROJECT_VERSION}"
+          if [[ "$GITHUB_REF_NAME" != "$expected_tag" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match project Version $PROJECT_VERSION (expected $expected_tag)." >&2
+            exit 1
+          fi
+
+      - name: Build release artifacts
+        run: ./publish.sh
+
+      - name: Verify release artifacts
+        shell: bash
+        run: |
+          for rid in win-x64 win-arm64 osx-x64 osx-arm64 linux-x64 linux-arm64; do
+            artifact="publish/AddPdfEnvelope-${rid}.zip"
+            if [[ ! -f "$artifact" ]]; then
+              echo "Missing release artifact: $artifact" >&2
+              exit 1
+            fi
+          done
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROJECT_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "v${PROJECT_VERSION}" publish/*.zip \
+            --verify-tag \
+            --title "v${PROJECT_VERSION}" \
+            --generate-notes
