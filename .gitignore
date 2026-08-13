@@ -368,3 +368,6 @@ Test-Result.pdf
 
 # Ignore the built publish binaries
 publish/
+
+# Agentic AI Skills
+.agents/skills/
