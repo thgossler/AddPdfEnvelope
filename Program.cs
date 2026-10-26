@@ -44,6 +44,11 @@ IConfiguration config = new ConfigurationBuilder()
     .Build();
 var settings = new PdfEnvelopeSettings(); // to prevent trimming of types
 settings = config.GetRequiredSection("PdfEnvelope").Get<PdfEnvelopeSettings>();
+// An explicitly configured empty "Roles" array means no signature fields (not the legacy default roles)
+var rolesKeyPresent = config.GetSection("PdfEnvelope:CoverPage").GetChildren().Any(c => c.Key == "Roles");
+foreach (var (name, value) in settings.Variables) {
+    Globals.Variables[name] = value ?? string.Empty;
+}
 
 #endregion
 
@@ -168,7 +173,7 @@ command.SetAction((parseResult) => {
                             .SetLineWidth(1.0f)
                             .Rectangle(disclaimerX, disclaimerY, disclaimerWidth, -disclaimerHeight)
                             .Stroke();
-                        canvas.Add(new Paragraph(settings.CoverPage.Disclaimer)
+                        canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Disclaimer, coverPdf, 1, settings.PageNumberOffset))
                             .SetTextAlignment(TextAlignment.LEFT)
                             .SetVerticalAlignment(VerticalAlignment.BOTTOM)
                             .SetFontSize(10)
@@ -203,7 +208,8 @@ command.SetAction((parseResult) => {
                         .SetFixedPosition(1, pageSideMargin + textSideMargin, pageSize.GetHeight() - pageTopMargin - 430, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin));
                     // Frames
                     float orgTextSize = 14;
-                    var orgTextWidth = !string.IsNullOrEmpty(settings.CoverPage.Organization) ? font.GetWidth(settings.CoverPage.Organization, orgTextSize) + 8 : 0;
+                    var organizationText = ResolvePlaceholders(settings.CoverPage.Organization, coverPdf, 1, settings.PageNumberOffset);
+                    var orgTextWidth = !string.IsNullOrEmpty(organizationText) ? font.GetWidth(organizationText, orgTextSize) + 8 : 0;
                     var framesTopY = pageSize.GetHeight() - pageTopMargin - 170;
                     var mainBoxHeight = framesTopY - 20 - pageBottomMargin - 100;
                     canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
@@ -217,8 +223,8 @@ command.SetAction((parseResult) => {
                         .Rectangle(pageSideMargin + textSideMargin, framesTopY - 20, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin, -mainBoxHeight)
                         .Stroke();
                     // Organization
-                    if (!string.IsNullOrEmpty(settings.CoverPage.Organization)) {
-                        canvas.Add(new Paragraph(ResolvePlaceholders(settings.CoverPage.Organization, coverPdf, 1, settings.PageNumberOffset))
+                    if (!string.IsNullOrEmpty(organizationText)) {
+                        canvas.Add(new Paragraph(organizationText)
                             .SetTextAlignment(TextAlignment.RIGHT)
                             .SetFontSize(orgTextSize)
                             .SimulateBold()
@@ -226,47 +232,19 @@ command.SetAction((parseResult) => {
                     }
                     // Signature Area
                     if (settings.CoverPage.ShowSignatureArea) {
-                        var sigAreaHeight = 80;
-                        var sigAreaTop = framesTopY - 20 - mainBoxHeight + 2*sigAreaHeight;
-                        canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
-                            .SetLineWidth(1.0f)
-                            .Rectangle(pageSideMargin + textSideMargin, sigAreaTop, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin, -sigAreaHeight)
-                            .Stroke();
-                        var authorText = "Author";
-                        if (!string.IsNullOrWhiteSpace(settings.CoverPage.RoleAuthor)) {
-                            authorText += $" ({settings.CoverPage.RoleAuthor})";
+                        var roles = settings.CoverPage.GetSignatureRoles(rolesKeyPresent);
+                        if (roles.Count > CoverPage.MaxSignatureFields) {
+                            LogError($"Warning: {roles.Count} signature roles configured, only the first {CoverPage.MaxSignatureFields} are used.");
+                            roles = roles.Take(CoverPage.MaxSignatureFields).ToList();
                         }
-                        canvas.Add(new Paragraph(ResolvePlaceholders(authorText, coverPdf, 1, settings.PageNumberOffset))
-                            .SetTextAlignment(TextAlignment.LEFT)
-                            .SetFontSize(12)
-                            .SetFixedPosition(1, pageSideMargin + textSideMargin + 10, sigAreaTop - 20, pageSize.GetWidth() / 3));
-                        canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
-                            .SetLineWidth(1.0f)
-                            .Rectangle(pageSideMargin + textSideMargin, sigAreaTop - sigAreaHeight, pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin, -sigAreaHeight)
-                            .Stroke();
-                        var approverText = "Approver";
-                        if (!string.IsNullOrWhiteSpace(settings.CoverPage.RoleApprover)) {
-                            approverText += $" ({settings.CoverPage.RoleApprover})";
-                        }
-                        canvas.Add(new Paragraph(ResolvePlaceholders(approverText, coverPdf, 1, settings.PageNumberOffset))
-                            .SetTextAlignment(TextAlignment.LEFT)
-                            .SetFontSize(12)
-                            .SetFixedPosition(1, pageSideMargin + textSideMargin + 10, sigAreaTop - sigAreaHeight - 20, pageSize.GetWidth() / 3));
-                        // Adobe Sign Tags
-                        var signaturePlaceholder = settings.CoverPage.AdobeSignTagPattern ?? "";
-                        if (settings.CoverPage.AddAdobeSignTags) {
-                            if (String.IsNullOrWhiteSpace(signaturePlaceholder)) {
-                                signaturePlaceholder = "{{SigB_es_:signer{sigNum}:signatureblock}}";
-                            }
-                            canvas.Add(new Paragraph(ResolvePlaceholders(signaturePlaceholder, coverPdf, 1, settings.PageNumberOffset))
-                                .SetTextAlignment(TextAlignment.LEFT)
-                                .SetFontSize(12)
-                                .SetFixedPosition(1, pageSideMargin + textSideMargin + 10, sigAreaTop - 40, pageSize.GetWidth() / 3));
-                            canvas.Add(new Paragraph(ResolvePlaceholders(signaturePlaceholder, coverPdf, 1, settings.PageNumberOffset))
-                                .SetTextAlignment(TextAlignment.LEFT)
-                                .SetFontSize(12)
-                                .SetFixedPosition(1, pageSideMargin + textSideMargin + 10, sigAreaTop - sigAreaHeight - 40, pageSize.GetWidth() / 3));
-                        }
+                        var mainBoxBottom = framesTopY - 20 - mainBoxHeight;
+                        var dateBottom = pageSize.GetHeight() - pageTopMargin - 430;
+                        DrawSignatureArea(canvas, coverPdf, font, roles,
+                            settings.CoverPage.ShouldAddSignTags() ? settings.CoverPage.GetSignTagPattern() : null,
+                            settings.PageNumberOffset,
+                            pageSideMargin + textSideMargin, mainBoxBottom,
+                            pageSize.GetWidth() - 2 * pageSideMargin - 2 * textSideMargin,
+                            dateBottom - 20 - mainBoxBottom);
                     }
                 }
                 coverPdf.SetFlushUnusedObjects(true);
@@ -532,6 +510,58 @@ static void LogError(string message)
     Console.ForegroundColor = fgcolor;
 }
 
+// Draws the signature fields as a grid anchored at the bottom of the given area. One or two fields are
+// stacked as full-width rows; three to five fields use two columns where an odd last field spans both.
+static void DrawSignatureArea(Canvas canvas, PdfDocument pdf, PdfFont font, IReadOnlyList<SignatureRole> roles,
+    string? signTagPattern, int pageNumberOffset, float left, float bottom, float width, float maxHeight)
+{
+    if (roles.Count == 0) return;
+
+    const float maxRowHeight = 80;
+    const float minRowHeight = 50;
+    const float cellPadding = 10;
+    const float labelOffset = 20;
+    const float tagOffset = 40;
+    const float maxFontSize = 12;
+
+    var columns = roles.Count <= 2 ? 1 : 2;
+    var rows = (roles.Count + columns - 1) / columns;
+    var rowHeight = Math.Clamp(maxHeight / rows, minRowHeight, maxRowHeight);
+    var columnWidth = width / columns;
+    var top = bottom + rows * rowHeight;
+
+    for (int i = 0; i < roles.Count; i++) {
+        var row = i / columns;
+        var column = i % columns;
+        var spansAllColumns = i == roles.Count - 1 && column == 0;
+        var cellWidth = spansAllColumns ? width : columnWidth;
+        var cellLeft = left + column * columnWidth;
+        var cellTop = top - row * rowHeight;
+        var textWidth = cellWidth - 2 * cellPadding;
+
+        canvas.GetPdfCanvas().SetStrokeColor(ColorConstants.BLACK)
+            .SetLineWidth(1.0f)
+            .Rectangle(cellLeft, cellTop, cellWidth, -rowHeight)
+            .Stroke();
+
+        canvas.Add(new Paragraph(ResolvePlaceholders(roles[i].GetLabel(), pdf, 1, pageNumberOffset))
+            .SetTextAlignment(TextAlignment.LEFT)
+            .SetFontSize(maxFontSize)
+            .SetFixedPosition(1, cellLeft + cellPadding, cellTop - labelOffset, textWidth));
+
+        if (signTagPattern != null) {
+            // Sign tags must stay on a single line, so shrink the font size if the cell is too narrow
+            var tagText = ResolvePlaceholders(signTagPattern, pdf, 1, pageNumberOffset);
+            var tagWidthAtUnitSize = font.GetWidth(tagText, 1);
+            var tagFontSize = tagWidthAtUnitSize > 0 ? Math.Min(maxFontSize, textWidth * 0.98f / tagWidthAtUnitSize) : maxFontSize;
+            canvas.Add(new Paragraph(tagText)
+                .SetTextAlignment(TextAlignment.LEFT)
+                .SetFontSize(tagFontSize)
+                .SetFixedPosition(1, cellLeft + cellPadding, cellTop - tagOffset, textWidth));
+        }
+    }
+}
+
 static PdfWriter? GetPdfWriter(FileInfo outputFile)
 {
     PdfWriter? writer = null;
@@ -563,46 +593,57 @@ static string GetTempOutputFilename(FileInfo? baseFileInfo)
         HashCode.Combine(baseFileInfo.FullName, DateTime.Now.Ticks.ToString()) + baseFileInfo.Extension;
 }
 
-static string? ResolvePlaceholders(string text, PdfDocument pdfDocument, int currentPageNumber, int pageNumberOffset = 0)
+// Resolves user-defined variables first (so their values may contain built-in placeholders), then the
+// built-in placeholders {date[:<format>]}, {sigNum}, {pageNum} and {numOfPages}. Unknown placeholders are kept as-is.
+static string ResolvePlaceholders(string? text, PdfDocument pdfDocument, int currentPageNumber, int pageNumberOffset = 0)
 {
     if (string.IsNullOrWhiteSpace(text)) return string.Empty;
 
-    string result = text;
-    string? signatureNumber = null;
+    var result = RegExs.PlaceholderRegEx.Replace(text, match => {
+        var name = match.Value[1..^1];
+        if (IsBuiltInPlaceholder(name)) return match.Value;
+        if (Globals.Variables.TryGetValue(name, out var value)) return value;
+        if (Globals.ReportedUnknownPlaceholders.Add(name)) {
+            LogError($"Warning: Unknown placeholder {match.Value} is kept as-is (not defined in Variables).");
+        }
+        return match.Value;
+    });
 
-    var placeholders = RegExs.PlaceholderRegEx.Matches(text);
-    for (int i = 0; i < placeholders.Count; i++) {
-        var placeholder = placeholders[i];
-        var index = i.ToString();
-
-        if (placeholder.Groups[0].Value.Contains("date")) {
-            // {date[:<format>]}, see also: https://learn.microsoft.com/en-us/dotnet/standard/base-types/custom-date-and-time-format-strings
-            result = result.Replace("date", index);
-            try {
-                result = String.Format(result, DateTime.Now);
-            }
-            catch (Exception) {
-                LogError($"Invalid date format specified: {text}");
-                Console.WriteLine($"Using default: dd.MM.yyyy");
-                return String.Format("{" + index + ":dd.MM.yyyy}", DateTime.Now);
-            }
-        }
-        else if (placeholder.Groups[0].Value.Contains("sigNum")) {
-            // {sigNum}
-            signatureNumber ??= (Globals.CurrentSigNum++).ToString();
-            result = result.Replace("{sigNum}", signatureNumber);
-        }
-        else if (placeholder.Groups[0].Value.Contains("pageNum")) {
-            // {pageNum}
-            result = (currentPageNumber == 1) ? "{numOfPages} pages" : result.Replace("{pageNum}", (currentPageNumber + pageNumberOffset).ToString());
-        }
-        else if (placeholder.Groups[0].Value.Contains("numOfPages")) {
-            // {numOfPages}
-            result = result.Replace("{numOfPages}", (pdfDocument.GetNumberOfPages() + pageNumberOffset).ToString());
-        }
+    if (currentPageNumber == 1 && result.Contains("{pageNum}")) {
+        result = "{numOfPages} pages";
     }
 
-    return result;
+    string? signatureNumber = null;
+    return RegExs.PlaceholderRegEx.Replace(result, match => {
+        var name = match.Value[1..^1];
+        switch (name) {
+            case "sigNum":
+                signatureNumber ??= (Globals.CurrentSigNum++).ToString();
+                return signatureNumber;
+            case "pageNum":
+                return (currentPageNumber + pageNumberOffset).ToString();
+            case "numOfPages":
+                return (pdfDocument.GetNumberOfPages() + pageNumberOffset).ToString();
+            case "date":
+                return DateTime.Now.ToString();
+        }
+        if (name.StartsWith("date:", StringComparison.Ordinal)) {
+            // See https://learn.microsoft.com/en-us/dotnet/standard/base-types/custom-date-and-time-format-strings
+            var format = name["date:".Length..];
+            try {
+                return DateTime.Now.ToString(format);
+            }
+            catch (FormatException) {
+                LogError($"Invalid date format specified: {match.Value}");
+                Console.WriteLine("Using default: dd.MM.yyyy");
+                return DateTime.Now.ToString("dd.MM.yyyy");
+            }
+        }
+        return match.Value;
+    });
 }
+
+static bool IsBuiltInPlaceholder(string name) =>
+    name is "date" or "sigNum" or "pageNum" or "numOfPages" || name.StartsWith("date:", StringComparison.Ordinal);
 
 #endregion

@@ -13,6 +13,8 @@
 
     public int PageNumberOffset { get; set; } = -1;
 
+    public Dictionary<string, string?> Variables { get; set; } = new();
+
     public bool RemoveAnnotationsOtherThanLinks { get; set; }
 }
 
@@ -28,10 +30,55 @@ public class CoverPage
     public string Date { get; set; } = string.Empty;
     public string Disclaimer { get; set; } = string.Empty;
     public bool ShowSignatureArea { get; set; } = false;
+    public bool? AddSignTags { get; set; }
+    public string? SignTagPattern { get; set; }
+    public List<SignatureRole>? Roles { get; set; }
+
+    // Legacy keys, only honored when the corresponding generic keys above are not configured
     public bool AddAdobeSignTags { get; set; } = false;
     public string AdobeSignTagPattern { get; set; } = "";
-    public string RoleAuthor { get; set; } = "AR";
-    public string RoleApprover { get; set; } = "AR";
+    public string? RoleAuthor { get; set; }
+    public string? RoleApprover { get; set; }
+
+    public const int MaxSignatureFields = 5;
+    public const string DefaultSignTagPattern = "{{SigB_es_:signer{sigNum}:signatureblock}}";
+
+    public bool ShouldAddSignTags() => AddSignTags ?? AddAdobeSignTags;
+
+    public string GetSignTagPattern()
+    {
+        if (!string.IsNullOrWhiteSpace(SignTagPattern)) return SignTagPattern;
+        if (!string.IsNullOrWhiteSpace(AdobeSignTagPattern)) return AdobeSignTagPattern;
+        return DefaultSignTagPattern;
+    }
+
+    /// <summary>
+    /// Returns the configured signature roles. If <see cref="Roles"/> is not configured, the legacy
+    /// fixed two-role configuration is mapped to the generic representation.
+    /// </summary>
+    public IReadOnlyList<SignatureRole> GetSignatureRoles(bool rolesKeyPresent)
+    {
+        if (Roles != null && Roles.Count > 0) return Roles;
+        if (rolesKeyPresent) return [];
+        return [
+            new SignatureRole { DocRole = "Author", ContentRole = RoleAuthor ?? "AR" },
+            new SignatureRole { DocRole = "Approver", ContentRole = RoleApprover ?? "AR" }
+        ];
+    }
+}
+
+public class SignatureRole
+{
+    public string DocRole { get; set; } = string.Empty;
+    public string ContentRole { get; set; } = string.Empty;
+
+    public string GetLabel()
+    {
+        var docRole = DocRole?.Trim() ?? string.Empty;
+        var contentRole = ContentRole?.Trim() ?? string.Empty;
+        if (docRole.Length == 0) return contentRole;
+        return contentRole.Length == 0 ? docRole : $"{docRole} ({contentRole})";
+    }
 }
 
 public class PageHeader
